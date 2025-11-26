@@ -1880,7 +1880,9 @@ class QuantumPlatform {
             email: user.email,
             name: user.displayName || 'Quantum User' 
         };
-        
+
+        localStorage.setItem('qosmos_currentUserUid', user.uid);
+
         // 3. Sync user data with MERN backend (using raw data as required)
         const mernResponse = await fetch('http://localhost:5000/api/user/firebase-login', {
             method: 'POST',
@@ -1930,12 +1932,8 @@ class QuantumPlatform {
             this.showLoading('Creating account...');
             const result = await this.auth.createUserWithEmailAndPassword(email, password);
 
-            const user = result.user;           
+            const user = result.user;                       
             
-            
-            console.log(user.uid);
-            
-            localStorage.setItem('qosmos_currentUserUid', user.uid);
             // Update user profile
             await result.user.updateProfile({
                 displayName: `${firstName} ${lastName}`
