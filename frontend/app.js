@@ -876,198 +876,6 @@ function isNewBuilderUI() {
     return !!(document.getElementById('gatePalette') || document.getElementById('singleQubitGates') || document.querySelector('.circuit-grid'));
 }
 
-function drawCircuit() {
-    // If new builder UI is present, skip legacy SVG draw to avoid conflicting renders
-    if (isNewBuilderUI()) return;
-  const canvas = document.getElementById("circuitCanvas");
-  if (!canvas) return; // Exit if canvas doesn't exist
-  // If we reach here, canvas exists, so we can safely use it
-  canvas.innerHTML = "";
-  const width = circuit.numCols * 80 + 100;
-  const height = circuit.numQubits * 80 + 60;
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("width", width);
-  svg.setAttribute("height", height);
-
-  // Qubit lines & labels
-  for (let q = 0; q < circuit.numQubits; q++) {
-    const y = 40 + q * 80;
-    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line.setAttribute("x1", 60);
-    line.setAttribute("y1", y);
-    line.setAttribute("x2", width - 40);
-    line.setAttribute("y2", y);
-    line.setAttribute("stroke", "var(--color-border)");
-    line.setAttribute("stroke-width", "2");
-    svg.appendChild(line);
-
-    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    text.setAttribute("x", 30);
-    text.setAttribute("y", y + 5);
-    text.setAttribute("fill", "var(--color-text)");
-    text.setAttribute("font-size", "14");
-    text.setAttribute("font-weight", "500");
-    text.textContent = `q${q}`;
-    svg.appendChild(text);
-  }
-
-    // Gates
-    circuit.gates.forEach((g) => {
-        const x = 60 + g.col * 80;
-        const y = 40 + g.qubit * 80;
-
-        // Create a group so the gate can be dragged as a single item
-        const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        group.setAttribute('transform', `translate(${x}, ${y})`);
-        group.setAttribute('data-gate', g.gate);
-        group.setAttribute('data-qubit', g.qubit);
-        group.setAttribute('data-col', g.col);
-        group.classList.add('gate-item');
-        group.setAttribute('draggable', 'true');
-
-        // Drag handlers for moving/removing gates
-        group.addEventListener('dragstart', (e) => {
-            const payload = JSON.stringify({ type: 'move-gate', gate: g.gate, qubit: g.qubit, col: g.col });
-            try { e.dataTransfer.setData('application/json', payload); } catch (err) { e.dataTransfer.setData('text/plain', payload); }
-            e.dataTransfer.effectAllowed = 'move';
-            group.classList.add('dragging');
-        });
-
-        group.addEventListener('dragend', (e) => {
-            group.classList.remove('dragging');
-        });
-
-        if (g.gate === "cx" || g.gate === "cz") {
-            const controlY = 0;
-            const targetY = 40 + (g.qubit + 1 - g.qubit) * 80; // relative
-      
-            // control dot
-            const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            dot.setAttribute("cx", 0);
-            dot.setAttribute("cy", controlY);
-            dot.setAttribute("r", 5);
-            dot.setAttribute("fill", "var(--color-text)");
-            group.appendChild(dot);
-      
-            // vertical line (relative)
-            const vline = document.createElementNS("http://www.w3.org/2000/svg", "line");
-            vline.setAttribute("x1", 0);
-            vline.setAttribute("y1", controlY);
-            vline.setAttribute("x2", 0);
-            vline.setAttribute("y2", targetY);
-            vline.setAttribute("stroke", "var(--color-text)");
-            vline.setAttribute("stroke-width", "2");
-            group.appendChild(vline);
-      
-            // target shape
-            if (g.gate === "cx") {
-                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                circle.setAttribute("cx", 0);
-                circle.setAttribute("cy", targetY);
-                circle.setAttribute("r", 18);
-                circle.setAttribute("fill", "none");
-                circle.setAttribute("stroke", "var(--color-text)");
-                circle.setAttribute("stroke-width", "2");
-                group.appendChild(circle);
-        
-                const cross1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                cross1.setAttribute("x1", -10);
-                cross1.setAttribute("y1", targetY);
-                cross1.setAttribute("x2", 10);
-                cross1.setAttribute("y2", targetY);
-                cross1.setAttribute("stroke", "var(--color-text)");
-                cross1.setAttribute("stroke-width", "2");
-                group.appendChild(cross1);
-        
-                const cross2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                cross2.setAttribute("x1", 0);
-                cross2.setAttribute("y1", targetY - 10);
-                cross2.setAttribute("x2", 0);
-                cross2.setAttribute("y2", targetY + 10);
-                cross2.setAttribute("stroke", "var(--color-text)");
-                cross2.setAttribute("stroke-width", "2");
-                group.appendChild(cross2);
-            } else if (g.gate === "cz") {
-                const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-                rect.setAttribute("x", -18);
-                rect.setAttribute("y", targetY - 18);
-                rect.setAttribute("width", 36);
-                rect.setAttribute("height", 36);
-                rect.setAttribute("rx", 6);
-                rect.setAttribute("fill", "var(--color-secondary)");
-                rect.setAttribute("stroke", "var(--color-border)");
-                rect.setAttribute("stroke-width", "1");
-                group.appendChild(rect);
-        
-                const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                txt.setAttribute("x", 0);
-                txt.setAttribute("y", targetY + 5);
-                txt.setAttribute("fill", "var(--color-text)");
-                txt.setAttribute("font-size", "12");
-                txt.setAttribute("font-weight", "500");
-                txt.setAttribute("text-anchor", "middle");
-                txt.textContent = "Z";
-                group.appendChild(txt);
-            }
-        } else {
-            const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-            rect.setAttribute("x", -18);
-            rect.setAttribute("y", -18);
-            rect.setAttribute("width", 36);
-            rect.setAttribute("height", 36);
-            rect.setAttribute("rx", 6);
-            rect.setAttribute("fill", "var(--color-secondary)");
-            rect.setAttribute("stroke", "var(--color-border)");
-            rect.setAttribute("stroke-width", "1");
-            group.appendChild(rect);
-
-            const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            txt.setAttribute("x", 0);
-            txt.setAttribute("y", 6);
-            txt.setAttribute("fill", "var(--color-text)");
-            txt.setAttribute("font-size", "12");
-            txt.setAttribute("font-weight", "500");
-            txt.setAttribute("text-anchor", "middle");
-            txt.textContent = g.gate.toUpperCase().replace("MEASURE", "M");
-            group.appendChild(txt);
-        }
-
-        svg.appendChild(group);
-    });
-
-  // Drop zones
-  for (let row = 0; row < circuit.numQubits; row++) {
-    for (let col = 0; col < circuit.numCols; col++) {
-      const zone = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      zone.setAttribute("x", 42 + col * 80);
-      zone.setAttribute("y", 22 + row * 80);
-      zone.setAttribute("width", 36);
-      zone.setAttribute("height", 36);
-      zone.setAttribute("fill", "transparent");
-      zone.dataset.row = row;
-      zone.dataset.col = col;
-            // Ensure the rect receives pointer events and looks clickable
-            zone.setAttribute('style', 'pointer-events: all; cursor: pointer;');
-            zone.addEventListener('click', onZoneClick);
-            zone.addEventListener('touchstart', (ev) => { ev.preventDefault(); onZoneClick({ target: zone }); });
-      svg.appendChild(zone);
-    }
-  }
-
-  canvas.appendChild(svg);
-
-  // Drag events for drop-zones
-  canvas.querySelectorAll("rect[data-row]").forEach((zone) => {
-    zone.addEventListener("dragover", (e) => e.preventDefault());
-    zone.addEventListener("drop", onDropGate);
-  });
-
-  const circuitInfo = document.getElementById("circuitInfo");
-  if (circuitInfo) {
-    circuitInfo.textContent = `${circuit.numQubits} qubits, ${circuit.numCols} columns`;
-  }
-}
-
 function onDropGate(e) {
   e.preventDefault();
     // If the new builder UI is present, let its handlers manage drops
@@ -1986,6 +1794,7 @@ class QuantumPlatform {
         // Language selection
         document.getElementById('codeLangSelect')?.addEventListener('change', (e) => {
             this.currentLanguage = e.target.value;
+            localStorage.setItem('qosmos_currentLanguage', e.target.value);
             if (this.circuit.length > 0) {
                 this.generateCode(); // Update code display
             }
@@ -2121,31 +1930,20 @@ class QuantumPlatform {
             this.showLoading('Creating account...');
             const result = await this.auth.createUserWithEmailAndPassword(email, password);
 
+            const user = result.user;           
+            
+            
+            console.log(user.uid);
+            
+            localStorage.setItem('qosmos_currentUserUid', user.uid);
             // Update user profile
             await result.user.updateProfile({
                 displayName: `${firstName} ${lastName}`
             });
 
-            // Create user document in Firestore
-            if (this.db) {
-                await this.db.collection('users').doc(result.user.uid).set({
-                    firstName,
-                    lastName,
-                    email,
-                    displayName: `${firstName} ${lastName}`,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    stats: {
-                        circuitsCreated: 0,
-                        gatesUsed: 0,
-                        simulationsRun: 0,
-                        codeExports: 0
-                    }
-                });
-            }
-
             this.hideModal('signupModal');
             this.showToast('Account created successfully!', 'success');
-            this.showPage('dashboard');
+            // this.showPage('dashboard');
         } catch (error) {
             this.showToast(error.message, 'error');
         } finally {
@@ -2158,7 +1956,9 @@ class QuantumPlatform {
             this.showLoading('Signing in with Google...');
             const provider = new firebase.auth.GoogleAuthProvider();
             const result = await this.auth.signInWithPopup(provider);
-
+            const user = result.user;
+            
+            localStorage.setItem('qosmos_currentUserUid', user.uid);
             // Check if this is a new user
             if (result.additionalUserInfo.isNewUser && this.db) {
                 await this.db.collection('users').doc(result.user.uid).set({

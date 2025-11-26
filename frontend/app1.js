@@ -763,6 +763,7 @@ function visualiseFromCode() {
         
         // Update circuit
         circuit.clear();
+        syncCircuitState()
         circuit.numQubits = numQubits;
         circuit.numCols = Math.max(8, gates.length + 2);
         
@@ -770,6 +771,7 @@ function visualiseFromCode() {
         gates.forEach(g => {
           circuit.addGate(g.gate, g.qubit, g.col, g.params || {});
         });
+        syncCircuitState();
         
         // Update visualizations
         drawCircuit();
@@ -1053,6 +1055,7 @@ function onDropGate(e) {
   
   try {
     circuit.addGate(gateName, row, col);
+    syncCircuitState();
     drawCircuit();
     refreshCode();
     updateVisualizations();
@@ -1076,6 +1079,7 @@ function onZoneClick(e) {
   const gate = selectedGate;
   try {
     circuit.addGate(gate, row, col);
+    syncCircuitState();
     // clear selection
     document.querySelectorAll('#gatePalette .gate-tile').forEach(t => t.classList.remove('selected'));
     selectedGate = null;
@@ -1174,7 +1178,7 @@ function setupToolbar() {
   });
   
   q("btnUndo").addEventListener("click", () => {
-    circuit.undo();
+    syncCircuitState()
     drawCircuit();
     refreshCode();
     updateVisualizations();
@@ -1185,6 +1189,7 @@ function setupToolbar() {
   
   q("btnClear").addEventListener("click", () => {
     circuit.clear();
+    syncCircuitState()
     drawCircuit();
     refreshCode();
     updateVisualizations();
@@ -1740,4 +1745,19 @@ function setupTopNavAuth() {
 document.addEventListener('DOMContentLoaded', () => {
   try { setupTopNavAuth(); } catch (e) { /* non-fatal */ }
 });
+
+// app1.js - Add this helper function
+
+function syncCircuitState() {
+    // Uses the global 'circuit' instance managed by app1.js
+    if (typeof circuit === 'undefined') return; 
+
+    const state = {
+        qubits: circuit.numQubits,
+        // Ensure you are using the correct array property name (gates)
+        gates: circuit.gates 
+    };
+    localStorage.setItem('currentCircuitState', JSON.stringify(state));
+    console.log('State saved to localStorage.');
+}
 
